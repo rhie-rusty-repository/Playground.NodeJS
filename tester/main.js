@@ -25,7 +25,7 @@ const upload = multer({
   }
 });
 
-app.post('/stats', upload.array('photo',1), function(req, res){
+app.post('/stats', upload.array(), function(req, res){
   console.log(req.files);
   res.send(req.files);
 })
