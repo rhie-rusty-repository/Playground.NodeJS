@@ -2,45 +2,49 @@ const express = require('express');
 const app = express();
 const port = 3000;
 const path = require('path');
-const { MongoClient } = require("mongodb");
+const mongoose = require('mongoose');
+const { Schema } = require('mongoose');
 
 app.use('/static', express.static(path.join(__dirname, 'public')))
 
-/*** 데이터베이스 ***/
-const uri = "mongodb://127.0.0.1:27017";
+const db_uri = 'mongodb://localhost:27017';
+const db_name = 'local';
 
-const client = new MongoClient(uri, {
+mongoose.connect(`${db_uri}/${db_name}`,{ 
   useNewUrlParser: true,
-  useUnifiedTopology: true,
+  useUnifiedTopology: true 
 });
 
-async function run() {
-  try {
-    // Connect the client to the server
-    await client.connect();
-    // Establish and verify connection
-    await client.db("local").command({ ping: 1 });
-    console.log("MongoDB server has received heart beat~!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
-  }
-}
+/*** Create Schema ***/
+const blogSchema = new Schema({
+  title:  String, // String is shorthand for {type: String}
+  author: String,
+  body:   String,
+  comments: [{ body: String, date: Date }],
+  date: { type: Date, default: Date.now },
+  hidden: Boolean
+})
+const toySchema = new Schema();
+toySchema.add({ name: 'string', color: 'string'}).add({price: 'number' });
 
-function connectDB(){
-  client.connect((err,db)=>{
+/*** Create Model ***/
+const Blog = mongoose.model('Blog', blogSchema);
+const Toy = mongoose.model('Toy', toySchema);
+
+app.get("/save/toys", function(req,res){
+  const robot_toy = new Toy({name:"robot", color:"red",price:10000});
+  robot_toy.validate((err)=>{
     if(err) throw err;
+    console.log("validate status : good");
+    robot_toy.save();
+    console.log("database save : good");
+    res.send("성공");
+  });
+})
 
-    console.log("Connected successfully to MongoDB server");
-
-    database = db;
-  })
-}
 
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
-  run().catch(console.dir);
-  // connectDB();
 })
 
