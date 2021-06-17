@@ -2,55 +2,15 @@ const express = require('express');
 const app = express();
 const port = 3000;
 const path = require('path');
-const mongoose = require('mongoose');
-const { Schema } = require('mongoose');
-const crypto = require('crypto');
+const database = require('./database');
+const security = require('./security');
 
 app.use('/static', express.static(path.join(__dirname, 'public')))
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-function base64encrypt(password, callback){
-  crypto.randomBytes(64, (err, buf) => {
-    const salt = buf.toString('base64')
-    crypto.scrypt(password, salt, 64, (err, derivedKey) => {
-      if (err) throw err;
-
-      const encrypt_result = {
-        saltVar: salt,
-        hashVar: derivedKey.toString('hex')
-      }
-
-      console.log(encrypt_result);
-
-      callback(encrypt_result);
-    })
-  })
-}
-
-const db_uri = 'mongodb://localhost:27017';
-const db_name = 'local';
-
-mongoose.connect(`${db_uri}/${db_name}`, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
-
-/*** Create Schema ***/
-const userSchema = new Schema({
-  user_id: String, // String is shorthand for {type: String}
-  password: String,
-  username: String,
-  salt: String,
-  reg_date: { type: Date, default: Date.now },
-},
-  { collection: 'member' })
-
-/*** Create Model ***/
-const User = mongoose.model('Users', userSchema);
-
 app.post("/process/register", function (req, res) {
-  const user = new User();
+  const user = new database.UserModel();
   console.log(req.body);
   user.user_id = req.body.id;
   user.username = req.body.username;
@@ -58,7 +18,7 @@ app.post("/process/register", function (req, res) {
   if (req.body.pw !== req.body.checkPw) {
     res.send("비밀번호가 일치하지 않음 : 회원가입 실패");
   } else {
-    base64encrypt(req.body.pw, function(encrypt_result){
+    security.base64encrypt(req.body.pw, function(encrypt_result){
       user.salt = encrypt_result.saltVar
       user.password = encrypt_result.hashVar
       user.save();
@@ -68,7 +28,8 @@ app.post("/process/register", function (req, res) {
 })
 
 app.post("/process/login", function (req, res) {
-  const user_query = User.find();
+  const user_query = database.UserModel.find();
+
   user_query.exec(function (err, user) {
     if (err) return handleError(err);
 
@@ -86,25 +47,23 @@ app.post("/process/login", function (req, res) {
       }
     }
 
+    if(!userInfo){
+      res.send("해당 아이디가 없습니다.")
+    }
+
+
     saltVar = userInfo.salt;
     origin_pw = userInfo.password;
 
-    crypto.scrypt(req.body.pw, saltVar, 64, (err, derivedKey) => {
-      if (err) throw err;
-
-      const hashVar = derivedKey.toString('hex');
-
-      console.log(`DB에 저장되어 있는 PASSWORD : ${origin_pw}`)
-      console.log(`사용자로부터 입력 받은 PASSWORD : ${hashVar}`)
-
-      
-      if (origin_pw === hashVar) {
+    security.base64decrypt(req.body.pw, origin_pw, saltVar, function(result){
+      if (result) {
         console.log("같다고 판단됨")
         res.send(`로그인 성공 : ${userInfo}`);
       }else{
-        res.send("로그인 실패")
+        res.send("비밀번호가 틀렸습니다. 실패")
       }
-    })
+    });
+
   })
 })
 
@@ -112,4 +71,3 @@ app.post("/process/login", function (req, res) {
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
 })
-
