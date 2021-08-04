@@ -2,7 +2,7 @@
 
 ## 01. install
 
-### * site
+### * website
 
  - [nodejs.org](https://nodejs.org/ko/download/)
 
@@ -10,7 +10,3 @@
 node -v
 npm -v
 ```
-
-### 02. Base-Knowledge
-
- - [JavaScript](https://developer.mozilla.org/ko/docs/Web/JavaScript)
