@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/MinHyungRHIE/Playground.NodeJS#readme",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.18.2",
     "serve-static": "^1.14.1"
   }
 }
